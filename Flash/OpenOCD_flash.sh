@@ -6,7 +6,7 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 PROJECT_NAME="$(basename "$PROJECT_DIR")"
 
 # 构建 ELF 文件路径（Linux原生使用正斜杠，无需转换）
-ELF_FILE="build/Debug/${PROJECT_NAME}.elf"
+ELF_FILE="build/${PROJECT_NAME}.elf"
 
 # 检查文件是否存在
 if [ ! -f "$ELF_FILE" ]; then

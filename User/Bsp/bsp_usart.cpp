@@ -17,9 +17,7 @@
 
 /**
  * @brief 手写printf的发送方式
- * 
  * @note 这个串口是天猛星上的烧录口的串口，调试使用
- *
  * @param fmt 
  * @param ... 
  * @return int 
