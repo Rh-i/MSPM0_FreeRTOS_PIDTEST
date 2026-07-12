@@ -59,6 +59,6 @@ set(MSPM0_SDK_PATH  /home/rh/ti/mspm0_sdk_2_10_00_04)
 
 说实话就得用JLink 我用OpenOCD会锁芯片（JLink，需要提前配置环境变量+安装JLink）
 
-调试：写好了调试器模板OpenOCD和JLink的都有
+调试：写好了调试器模板OpenOCD和JLink的都有 `F5`
 
 烧录脚本规则。你生成的ELF文件要和根文件夹名字相同即可

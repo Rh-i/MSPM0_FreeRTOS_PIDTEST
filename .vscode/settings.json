@@ -38,7 +38,7 @@
             "label": "[🔌 JLink烧录Win]",
             "task": "JLink_flash_win",
             "tooltip": "JLink 烧录 (Windows)"
-        },
+        }
     ],
     "cmake.useCMakePresets": "always"
 }
