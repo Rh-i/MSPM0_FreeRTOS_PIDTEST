@@ -97,6 +97,6 @@
       "group": "build",
       "problemMatcher": [],
       "detail": "CMake 清理"
-    }
+    },
   ]
 }
