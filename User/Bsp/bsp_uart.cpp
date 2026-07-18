@@ -1,34 +1,39 @@
 /**
  * @file bsp_uart.cpp
- * @brief MSPM0 版 BspUart — 模板实现 + UART ISR
+ * @brief MSPM0 BspUart — RX: FIFO+中断 / TX: DMA / 流缓冲区解耦
+ *
+ * @note 如何使用？ 配置好rx fifo为全满 tx fifo为全空。然后打开tx的dma,把配置从word改成byte。再打开中断，receive、tx timeout、dma done tx三个中断。
+ *
+ * @note 然后在中断里处理数据，rx fifo的数据读出来放到流缓冲区里，tx dma done中断里从流缓冲区里取数据放到tx dma buffer里。然后在任务里调用receive和send函数就可以了。
+ *
+ * @note 先init,然后就可以在任务中使用send和receive了。send和receive都是阻塞（os的阻塞）的，send会把数据放到tx流缓冲区里，然后启动tx dma传输，receive会从rx流缓冲区里取数据。不能在中断中使用
+ * 
  */
 
 #include "bsp_uart.hpp"
+#include "user_system.hpp"
 
-/* 裸机 C++ 所需桩 */
-/* 裸机 C++ 全局析构所需桩 */
+#include <stdarg.h>
+#include <stdio.h>
+
 void *__dso_handle = nullptr;
 
-/* ==================== 静态成员定义 ==================== */
-template <size_t BUF_SIZE>
-BspUart<BUF_SIZE> *BspUart<BUF_SIZE>::_instances[MAX_INST] = {};
+/* ==================== 静态成员 ==================== */
+template <size_t B>
+BspUart<B> *BspUart<B>::_instances[MAX_INST] = {};
 
-template <size_t BUF_SIZE>
-size_t BspUart<BUF_SIZE>::_inst_count = 0;
+template <size_t B>
+size_t BspUart<B>::_inst_count = 0;
 
-/* ==================== 构造函数 ==================== */
-template <size_t BUF_SIZE>
-BspUart<BUF_SIZE>::BspUart()
+/* ==================== 构造 / 析构 / 查找 ==================== */
+template <size_t B>
+BspUart<B>::BspUart()
 {
   if (_inst_count < MAX_INST)
-  {
     _instances[_inst_count++] = this;
-  }
 }
-
-/* ==================== 析构 ==================== */
-template <size_t BUF_SIZE>
-BspUart<BUF_SIZE>::~BspUart()
+template <size_t B>
+BspUart<B>::~BspUart()
 {
   if (_rx_stream)
     vStreamBufferDelete(_rx_stream);
@@ -36,19 +41,23 @@ BspUart<BUF_SIZE>::~BspUart()
     vStreamBufferDelete(_tx_stream);
 }
 
-/* ==================== 查找实例 ==================== */
-template <size_t BUF_SIZE>
-BspUart<BUF_SIZE> *BspUart<BUF_SIZE>::find(UART_Regs *uart)
+template <size_t B>
+BspUart<B> *BspUart<B>::find(UART_Regs *uart)
 {
   for (size_t i = 0; i < _inst_count; i++)
-  {
     if (_instances[i] && _instances[i]->get_uart() == uart)
       return _instances[i];
-  }
   return nullptr;
 }
 
-/* ==================== 初始化 ==================== */
+/**
+ * @brief 初始化函数 初始化串口驱动对象，配置必要的FreeRTOS对象，需要在FreeRTOS调度器启动前调用
+ * 
+ * @tparam BUF_SIZE 
+ * @param cfg 
+ * @return true 
+ * @return false 
+ */
 template <size_t BUF_SIZE>
 bool BspUart<BUF_SIZE>::init(const Config &cfg)
 {
@@ -61,15 +70,14 @@ bool BspUart<BUF_SIZE>::init(const Config &cfg)
 
   NVIC_EnableIRQ(_cfg.irq);
 
+  /* RX: FIFO + RX_TIMEOUT（CPU 手动读 FIFO，不用 DMA） */
   DL_UART_Main_enableFIFOs(_cfg.uart);
-  DL_UART_Main_setRXFIFOThreshold(_cfg.uart, DL_UART_RX_FIFO_LEVEL_ONE_ENTRY);
+  DL_UART_Main_setRXFIFOThreshold(_cfg.uart, DL_UART_RX_FIFO_LEVEL_1_2_FULL);
+  DL_UART_setRXInterruptTimeout(_cfg.uart, 6U);
+  DL_UART_Main_enableInterrupt(_cfg.uart,
+                               DL_UART_MAIN_INTERRUPT_RX | DL_UART_MAIN_INTERRUPT_RX_TIMEOUT_ERROR);
 
-  DL_DMA_disableChannel(DMA, _cfg.dma_rx_chan);
-  DL_DMA_setSrcAddr(DMA, _cfg.dma_rx_chan, (uint32_t)&(_cfg.uart->RXDATA));
-  DL_DMA_setDestAddr(DMA, _cfg.dma_rx_chan, (uint32_t)&_rx_byte);
-  DL_DMA_setTransferSize(DMA, _cfg.dma_rx_chan, 1);
-  DL_DMA_enableChannel(DMA, _cfg.dma_rx_chan);
-
+  /* TX: DMA */
   DL_DMA_disableChannel(DMA, _cfg.dma_tx_chan);
   DL_DMA_setSrcAddr(DMA, _cfg.dma_tx_chan, (uint32_t)_tx_buf);
   DL_DMA_setDestAddr(DMA, _cfg.dma_tx_chan, (uint32_t)&(_cfg.uart->TXDATA));
@@ -77,25 +85,31 @@ bool BspUart<BUF_SIZE>::init(const Config &cfg)
   return true;
 }
 
-/* ==================== ISR 处理 ==================== */
-template <size_t BUF_SIZE>
-void BspUart<BUF_SIZE>::handle_isr(BaseType_t *woken)
+/**
+ * @brief 处理 UART 中断
+ * 
+ * @tparam B 
+ * @param woken 
+ */
+template <size_t B>
+void BspUart<B>::handle_isr(BaseType_t *woken)
 {
-  DL_UART_IIDX iidx = DL_UART_Main_getPendingInterrupt(_cfg.uart);
-  size_t       n;
-
-  switch (iidx)
+  switch (DL_UART_Main_getPendingInterrupt(_cfg.uart))
   {
-    case DL_UART_MAIN_IIDX_DMA_DONE_RX:
-      xStreamBufferSendFromISR(_rx_stream, (void *)&_rx_byte, 1, woken);
-      DL_DMA_disableChannel(DMA, _cfg.dma_rx_chan);
-      DL_DMA_setDestAddr(DMA, _cfg.dma_rx_chan, (uint32_t)&_rx_byte);
-      DL_DMA_setTransferSize(DMA, _cfg.dma_rx_chan, 1);
-      DL_DMA_enableChannel(DMA, _cfg.dma_rx_chan);
+
+    case DL_UART_MAIN_IIDX_RX:
+    case DL_UART_MAIN_IIDX_RX_TIMEOUT_ERROR:
+    {
+      uint8_t  buf[8];
+      uint16_t n = DL_UART_Main_drainRXFIFO(_cfg.uart, buf, 8);
+      if (n)
+        xStreamBufferSendFromISR(_rx_stream, buf, n, woken);
       break;
+    }
 
     case DL_UART_MAIN_IIDX_DMA_DONE_TX:
-      n = xStreamBufferReceiveFromISR(_tx_stream, _tx_buf, BUF_SIZE, woken);
+    {
+      size_t n = xStreamBufferReceiveFromISR(_tx_stream, _tx_buf, B, woken);
       if (n)
       {
         DL_DMA_disableChannel(DMA, _cfg.dma_tx_chan);
@@ -104,37 +118,77 @@ void BspUart<BUF_SIZE>::handle_isr(BaseType_t *woken)
         DL_DMA_enableChannel(DMA, _cfg.dma_tx_chan);
       }
       break;
+    }
 
     default:
       break;
   }
 }
 
-/* ==================== 发送 ==================== */
-template <size_t BUF_SIZE>
-int BspUart<BUF_SIZE>::send(const uint8_t *data, size_t size, uint32_t timeout)
+/**
+ * @brief 发送数据到 UART 发送缓冲区，并启动 DMA 传输
+ * 
+ * @tparam B 模板中的缓冲区大小
+ * @param data 数据数组
+ * @param size 数组长度
+ * @param timeout 可以等待的超时时间
+ * @return size_t 存入长度
+ */
+template <size_t B>
+size_t BspUart<B>::send(const uint8_t *data, size_t size, uint32_t timeout)
 {
   size_t n = xStreamBufferSend(_tx_stream, data, size, timeout);
-  if (n > 0)
+  if (n)
     tx_kickoff();
   return n;
 }
 
-/* ==================== 接收 ==================== */
-template <size_t BUF_SIZE>
-int BspUart<BUF_SIZE>::receive(uint8_t *buf, size_t size, uint32_t timeout)
+
+template <size_t B>
+int BspUart<B>::uart_printf(const char *fmt, ...)
+{
+  if (!fmt)
+    return -1;
+
+  char buf[B];
+  va_list args;
+  va_start(args, fmt);
+  int n = user_system::format_v(buf, sizeof(buf), fmt, args);
+  va_end(args);
+
+  if (n < 0)
+    return -1;
+
+  size_t sent = send(reinterpret_cast<const uint8_t *>(buf), static_cast<size_t>(n), portMAX_DELAY);
+  return (sent == static_cast<size_t>(n)) ? n : -1;
+}
+
+/**
+ * @brief 从 UART 接收缓冲区接收数据
+ * 
+ * @tparam B 模板中的缓冲区大小
+ * @param buf 数据数组
+ * @param size 数组长度
+ * @param timeout 可以等待的超时时间
+ * @return size_t 存入长度
+ */
+template <size_t B>
+size_t BspUart<B>::receive(uint8_t *buf, size_t size, uint32_t timeout)
 {
   return xStreamBufferReceive(_rx_stream, buf, size, timeout);
 }
 
-/* ==================== TX 启动 ==================== */
-template <size_t BUF_SIZE>
-void BspUart<BUF_SIZE>::tx_kickoff()
+/**
+ * @brief 尝试TX发送
+ * 
+ * @tparam B 
+ */
+template <size_t B>
+void BspUart<B>::tx_kickoff()
 {
   if (DL_DMA_isChannelEnabled(DMA, _cfg.dma_tx_chan))
     return;
-
-  size_t n = xStreamBufferReceive(_tx_stream, _tx_buf, BUF_SIZE, 0);
+  size_t n = xStreamBufferReceive(_tx_stream, _tx_buf, B, 0);
   if (n)
   {
     DL_DMA_disableChannel(DMA, _cfg.dma_tx_chan);
@@ -144,44 +198,37 @@ void BspUart<BUF_SIZE>::tx_kickoff()
   }
 }
 
-/* ==================== 模板显式实例化 ==================== */
+/* ==================== 显式实例化 + UART ISR ==================== */
+
 template class BspUart<64>;
 template class BspUart<128>;
 template class BspUart<256>;
 
-/* ==================== UART ISR ==================== */
 extern "C" void UART0_IRQHandler(void)
 {
-  BaseType_t woken = pdFALSE;
-  auto      *inst  = BspUart<64>::find(UART0);
-  if (inst)
-    inst->handle_isr(&woken);
-  portYIELD_FROM_ISR(woken);
+  BaseType_t w = pdFALSE;
+  if (auto *i = BspUart<64>::find(UART0))
+    i->handle_isr(&w);
+  portYIELD_FROM_ISR(w);
 }
-
 extern "C" void UART1_IRQHandler(void)
 {
-  BaseType_t woken = pdFALSE;
-  auto      *inst  = BspUart<64>::find(UART1);
-  if (inst)
-    inst->handle_isr(&woken);
-  portYIELD_FROM_ISR(woken);
+  BaseType_t w = pdFALSE;
+  if (auto *i = BspUart<64>::find(UART1))
+    i->handle_isr(&w);
+  portYIELD_FROM_ISR(w);
 }
-
 extern "C" void UART2_IRQHandler(void)
 {
-  BaseType_t woken = pdFALSE;
-  auto      *inst  = BspUart<64>::find(UART2);
-  if (inst)
-    inst->handle_isr(&woken);
-  portYIELD_FROM_ISR(woken);
+  BaseType_t w = pdFALSE;
+  if (auto *i = BspUart<64>::find(UART2))
+    i->handle_isr(&w);
+  portYIELD_FROM_ISR(w);
 }
-
 extern "C" void UART3_IRQHandler(void)
 {
-  BaseType_t woken = pdFALSE;
-  auto      *inst  = BspUart<64>::find(UART3);
-  if (inst)
-    inst->handle_isr(&woken);
-  portYIELD_FROM_ISR(woken);
+  BaseType_t w = pdFALSE;
+  if (auto *i = BspUart<64>::find(UART3))
+    i->handle_isr(&w);
+  portYIELD_FROM_ISR(w);
 }

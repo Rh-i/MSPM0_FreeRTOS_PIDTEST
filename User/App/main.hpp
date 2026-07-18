@@ -6,7 +6,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
-#include "bsp_uart.hpp"
-
+#include "bsp_cfg.hpp"
+#include "device_cfg.hpp"
 
 #endif // __MAIN_HPP__

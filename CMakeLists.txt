@@ -22,8 +22,9 @@ add_executable(${CMAKE_PROJECT_NAME}.elf
     ${FREERTOS_PORTABLE_C_SOURCES}
     ${FREERTOS_MEMMANG_C_SOURCES}
     ${USER_SOURCES}
-
 )
+
+
 
 include_directories(
     ./FreeRTOS/include

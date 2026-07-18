@@ -91,3 +91,6 @@ file(GLOB_RECURSE SYSCONFIG_SOURCES
 )
 
 add_compile_options(-fno-exceptions)
+
+add_link_options(-Wl,--no-warn-rwx-segments)
+

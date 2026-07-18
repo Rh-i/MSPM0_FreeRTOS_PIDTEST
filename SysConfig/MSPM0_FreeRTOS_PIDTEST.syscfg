@@ -23,6 +23,7 @@ const TIMER  = scripting.addModule("/ti/driverlib/TIMER", {}, false);
 const TIMER1 = TIMER.addInstance();
 const UART   = scripting.addModule("/ti/driverlib/UART", {}, false);
 const UART1  = UART.addInstance();
+const UART2  = UART.addInstance();
 
 /**
  * Write custom configuration values to the imported modules.
@@ -180,10 +181,14 @@ TIMER1.interruptPriority = "3";
 
 UART1.interruptPriority                 = "3";
 UART1.targetBaudRate                    = 115200;
-UART1.enabledDMARXTriggers              = "DL_UART_DMA_INTERRUPT_RX";
 UART1.enabledDMATXTriggers              = "DL_UART_DMA_INTERRUPT_TX";
 UART1.$name                             = "UART0";
-UART1.enabledInterrupts                 = ["DMA_DONE_RX","DMA_DONE_TX"];
+UART1.rxTimeoutValue                    = 4;
+UART1.enableFIFO                        = true;
+UART1.enabledInterrupts                 = ["DMA_DONE_TX","RX","RX_TIMEOUT_ERROR"];
+UART1.enableDMARX                       = false;
+UART1.txFifoThreshold                   = "DL_UART_TX_FIFO_LEVEL_EMPTY";
+UART1.rxFifoThreshold                   = "DL_UART_RX_FIFO_LEVEL_FULL";
 UART1.peripheral.$assign                = "UART0";
 UART1.peripheral.rxPin.$assign          = "PA11";
 UART1.peripheral.txPin.$assign          = "PA10";
@@ -196,16 +201,37 @@ UART1.rxPinConfig.hideOutputInversion   = scripting.forceWrite(false);
 UART1.rxPinConfig.onlyInternalResistor  = scripting.forceWrite(false);
 UART1.rxPinConfig.passedPeripheralType  = scripting.forceWrite("Digital");
 UART1.rxPinConfig.$name                 = "ti_driverlib_gpio_GPIOPinGeneric1";
-UART1.DMA_CHANNEL_RX.addressMode        = "f2b";
-UART1.DMA_CHANNEL_RX.$name              = "DMA_CH1";
-UART1.DMA_CHANNEL_RX.srcLength          = "BYTE";
-UART1.DMA_CHANNEL_RX.dstLength          = "BYTE";
-UART1.DMA_CHANNEL_RX.peripheral.$assign = "DMA_CH1";
-UART1.DMA_CHANNEL_TX.addressMode        = "b2f";
 UART1.DMA_CHANNEL_TX.$name              = "DMA_CH0";
+UART1.DMA_CHANNEL_TX.addressMode        = "b2f";
 UART1.DMA_CHANNEL_TX.dstLength          = "BYTE";
 UART1.DMA_CHANNEL_TX.srcLength          = "BYTE";
 UART1.DMA_CHANNEL_TX.peripheral.$assign = "DMA_CH0";
+
+UART2.$name                             = "UART1";
+UART2.targetBaudRate                    = 115200;
+UART2.enableFIFO                        = true;
+UART2.rxFifoThreshold                   = "DL_UART_RX_FIFO_LEVEL_FULL";
+UART2.txFifoThreshold                   = "DL_UART_TX_FIFO_LEVEL_EMPTY";
+UART2.enabledInterrupts                 = ["DMA_DONE_TX","RX","RX_TIMEOUT_ERROR"];
+UART2.interruptPriority                 = "3";
+UART2.enabledDMATXTriggers              = "DL_UART_DMA_INTERRUPT_TX";
+UART2.peripheral.$assign                = "UART1";
+UART2.peripheral.rxPin.$assign          = "PB5";
+UART2.peripheral.txPin.$assign          = "PB4";
+UART2.txPinConfig.$name                 = "ti_driverlib_gpio_GPIOPinGeneric6";
+UART2.txPinConfig.direction             = scripting.forceWrite("OUTPUT");
+UART2.txPinConfig.hideOutputInversion   = scripting.forceWrite(false);
+UART2.txPinConfig.onlyInternalResistor  = scripting.forceWrite(false);
+UART2.txPinConfig.passedPeripheralType  = scripting.forceWrite("Digital");
+UART2.rxPinConfig.$name                 = "ti_driverlib_gpio_GPIOPinGeneric7";
+UART2.rxPinConfig.hideOutputInversion   = scripting.forceWrite(false);
+UART2.rxPinConfig.onlyInternalResistor  = scripting.forceWrite(false);
+UART2.rxPinConfig.passedPeripheralType  = scripting.forceWrite("Digital");
+UART2.DMA_CHANNEL_TX.$name              = "DMA_CH1";
+UART2.DMA_CHANNEL_TX.srcLength          = "BYTE";
+UART2.DMA_CHANNEL_TX.dstLength          = "BYTE";
+UART2.DMA_CHANNEL_TX.addressMode        = "b2f";
+UART2.DMA_CHANNEL_TX.peripheral.$assign = "DMA_CH1";
 
 /**
  * Pinmux solution for unlocked pins/peripherals. This ensures that minor changes to the automatic solver in a future
