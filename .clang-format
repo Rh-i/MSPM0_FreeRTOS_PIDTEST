@@ -52,13 +52,13 @@ AlignOperands:   true
 # -- Empty - 只把空的函数放在同一行
 # -- Inline - 把类内的内联函数放在同一行，全局的空函数不放在同一行
 # -- All - 都允许放在同一行
-AllowShortFunctionsOnASingleLine: InlineOnly
+AllowShortFunctionsOnASingleLine: All
 
-# # 短的if语句保持在同一行
-# AllowShortIfStatementsOnASingleLine: true
+# 短的if语句保持在同一行
+AllowShortIfStatementsOnASingleLine: true
 
-# # 短的循环保持在同一行
-# AllowShortLoopsOnASingleLine: true
+# 短的循环保持在同一行
+AllowShortLoopsOnASingleLine: true
 
 # # 总是在返回类型后换行: None, All, TopLevel(顶级函数，不包括在类中的函数), 
 # # AllDefinitions(所有的定义，不包括声明), TopLevelDefinitions(所有的顶级函数的定义)

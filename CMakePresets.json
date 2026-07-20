@@ -13,5 +13,12 @@
         "CMAKE_BUILD_TYPE": "Debug"
       }
     }
+  ],
+  "buildPresets": [
+    {
+      "name": "default",
+      "configurePreset": "Debug",
+      "jobs": 0
+    }
   ]
 }

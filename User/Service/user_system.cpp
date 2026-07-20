@@ -98,20 +98,20 @@ int format_v(char *buf, size_t size, const char *fmt, va_list args)
       case 'd':
       case 'i':
       {
-        long long value = is_long ? va_arg(args, long long) : static_cast<long long>(va_arg(args, int));
+        long long value = is_long ? static_cast<long long>(va_arg(args, long)) : static_cast<long long>(va_arg(args, int));
         append_signed(buf, written, size, value, 10);
         break;
       }
       case 'u':
       {
-        unsigned long long value = is_long ? va_arg(args, unsigned long long) : va_arg(args, unsigned);
+        unsigned long long value = is_long ? static_cast<unsigned long long>(va_arg(args, unsigned long)) : static_cast<unsigned long long>(va_arg(args, unsigned));
         append_unsigned(buf, written, size, value, 10, false);
         break;
       }
       case 'x':
       case 'X':
       {
-        unsigned long long value = is_long ? va_arg(args, unsigned long long) : va_arg(args, unsigned);
+        unsigned long long value = is_long ? static_cast<unsigned long long>(va_arg(args, unsigned long)) : static_cast<unsigned long long>(va_arg(args, unsigned));
         append_unsigned(buf, written, size, value, 16, spec == 'X');
         break;
       }
