@@ -117,6 +117,10 @@ void BspUart<B>::handle_isr(BaseType_t *woken)
         DL_DMA_setTransferSize(DMA, _cfg.dma_tx_chan, n);
         DL_DMA_enableChannel(DMA, _cfg.dma_tx_chan);
       }
+      else
+      {
+        _tx_dma_busy = false;
+      }
       break;
     }
 
@@ -188,9 +192,12 @@ void BspUart<B>::tx_kickoff()
 {
   if (DL_DMA_isChannelEnabled(DMA, _cfg.dma_tx_chan))
     return;
+  if (_tx_dma_busy)
+    return;
   size_t n = xStreamBufferReceive(_tx_stream, _tx_buf, B, 0);
   if (n)
   {
+    _tx_dma_busy = true;
     DL_DMA_disableChannel(DMA, _cfg.dma_tx_chan);
     DL_DMA_setSrcAddr(DMA, _cfg.dma_tx_chan, (uint32_t)_tx_buf);
     DL_DMA_setTransferSize(DMA, _cfg.dma_tx_chan, n);

@@ -41,6 +41,7 @@ private:
   StreamBufferHandle_t _rx_stream = nullptr;
   StreamBufferHandle_t _tx_stream = nullptr;
   uint8_t              _tx_buf[B] __attribute__((aligned(4))) {};
+  bool                 _tx_dma_busy = false;
 
   static constexpr size_t MAX_INST = 4;
   static BspUart         *_instances[MAX_INST];
