@@ -24,7 +24,7 @@ root
     ├─Module      |模块层
     ├─Algorithm   |算法层
     ├─Service     |服务层
-    ├─App         |应用层 / c cpp混编接口层
+    ├─App         |应用层 / cpp接口层
     └─Protocol    |协议层
 ```
 
@@ -49,7 +49,7 @@ set(MSPM0_SDK_PATH  /home/rh/ti/mspm0_sdk_2_10_00_04)
 
 在user文件夹下，对应文件夹中的文件，会自动添加头文件和源文件，可以直接编译
 
-已知bug：windows下需要改成使用ninja编译，默认不是ninja，需要稍微修改
+已知bug：windows下需要改成使用ninja编译，默认不是ninja，需要稍微修改，以及可能编译出的内容位置不一样，是cmake_tool的问题
 
 ## 编译烧录调试
 
