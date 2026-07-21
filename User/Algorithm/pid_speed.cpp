@@ -35,8 +35,7 @@ void PidSpeed::init(float kp, float ki, float kd, float out_max)
 {
   _pid.init(kp, ki, kd, out_max, out_max * 0.80f);
 
-  _last_count   = 0;
-  _delta_count  = 0;
+
   _speed_cm_s   = 0;
   _target_speed = 0;
 }
@@ -69,8 +68,6 @@ void PidSpeed::reset()
 {
   _pid.reset();
 
-  _last_count   = 0;
-  _delta_count  = 0;
   _speed_cm_s   = 0;
   _target_speed = 0;
 }

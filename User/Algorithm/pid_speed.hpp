@@ -23,8 +23,6 @@ public:
 
 private:
   Pid     _pid;           /* 内嵌的位置式PID */
-  int16_t _last_count;    /* 上次编码器值 */
-  int16_t _delta_count;   /* 编码器增量 */
   float   _speed_cm_s;    /* 当前速度 cm/s */
   float   _target_speed;  /* 目标速度 cm/s */
 };

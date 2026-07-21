@@ -7,8 +7,8 @@
 #include "bsp_cfg.hpp"
 
 /* ==================== 全局实例 ==================== */
-TiGyro ti_gyro;
-Motor  motor;
+TiGyro   ti_gyro;
+Motor    motor;
 
 /* ==================== 设备初始化 ==================== */
 void device_init()

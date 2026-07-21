@@ -4,14 +4,39 @@
 
 #include "main.hpp"
 #include <math.h>
+#include <stdio.h>
 
 /* ========================================================================== */
+
+/**
+ * @brief OLED 显示任务 — 屏幕显示自增计数器
+ *
+ * 屏幕布局 (16列 × 4行, 8×16字体):
+ *   第1行: "OLED Counter"
+ *   第2行: 自增数值
+ */
+extern "C" void oled_task(void *arg)
+{
+  char    buf[17];
+  int32_t count = 0;
+
+  while (1)
+  {
+    snprintf(buf, sizeof(buf), "Cnt: %-10ld", (long)count);
+    oled.show_string(0, 0, "OLED Counter");
+    oled.show_string(0, 2, buf);
+    oled.refresh();
+
+    count++;
+    vTaskDelay(pdMS_TO_TICKS(200));
+  }
+}
 
 /** @brief 测试波形类型 */
 enum WaveType
 {
-  WAVE_SINE = 0,     ///< 正弦波
-  WAVE_SQUARE = 1,   ///< 方波（阶跃响应测试）
+  WAVE_SINE     = 0, ///< 正弦波
+  WAVE_SQUARE   = 1, ///< 方波（阶跃响应测试）
   WAVE_TRIANGLE = 2, ///< 三角波（斜坡跟踪测试）
   WAVE_SAWTOOTH = 3, ///< 锯齿波（单向扫描测试）
 };
@@ -20,9 +45,9 @@ enum WaveType
 static const WaveType kWave = WAVE_SQUARE;
 
 /** 波形公共参数 */
-static const float kWaveAmplitude = 50.0f;  /* 幅值 cm/s */
-static const float kWavePeriod_s  = 5.0f;   /* 周期 s */
-static const float kDt_s          = 0.01f;  /* 控制周期 s (10ms) */
+static const float kWaveAmplitude = 50.0f; /* 幅值 cm/s */
+static const float kWavePeriod_s  = 5.0f;  /* 周期 s */
+static const float kDt_s          = 0.01f; /* 控制周期 s (10ms) */
 
 /**
  * @brief 电机速度环控制任务 — 多种波形测试
@@ -34,8 +59,8 @@ extern "C" void motor_task(void *arg)
   while (1)
   {
     /* ---- 根据所选波形计算目标速度 ---- */
-    float t     = (float)tick * kDt_s;         /* 当前时间 s */
-    float phase = t / kWavePeriod_s;           /* 归一化相位 [0,1) */
+    float t     = (float)tick * kDt_s; /* 当前时间 s */
+    float phase = t / kWavePeriod_s;   /* 归一化相位 [0,1) */
     float target;
 
     switch (kWave)
@@ -43,23 +68,24 @@ extern "C" void motor_task(void *arg)
       case WAVE_SQUARE:
         /* 方波: 前半周期 +A, 后半周期 -A */
         target = (phase - floorf(phase) < 0.5f)
-                   ? kWaveAmplitude : -kWaveAmplitude;
+                   ? kWaveAmplitude
+                   : -kWaveAmplitude;
         break;
 
       case WAVE_TRIANGLE:
         /* 三角波: 线性上升→下降 */
         {
-          float p = phase - floorf(phase);  /* [0, 1) */
+          float p = phase - floorf(phase); /* [0, 1) */
           target  = (p < 0.5f)
-                      ? kWaveAmplitude * (4.0f * p - 1.0f)       /* 上升段: -A→+A */
-                      : kWaveAmplitude * (3.0f - 4.0f * p);      /* 下降段: +A→-A */
+                      ? kWaveAmplitude * (4.0f * p - 1.0f)  /* 上升段: -A→+A */
+                      : kWaveAmplitude * (3.0f - 4.0f * p); /* 下降段: +A→-A */
         }
         break;
 
       case WAVE_SAWTOOTH:
         /* 锯齿波: 从 -A 线性上升到 +A，然后跳回 */
         {
-          float p = phase - floorf(phase);  /* [0, 1) */
+          float p = phase - floorf(phase); /* [0, 1) */
           target  = kWaveAmplitude * (2.0f * p - 1.0f);
         }
         break;
@@ -79,10 +105,10 @@ extern "C" void motor_task(void *arg)
     /* ---- CSV 输出: target, current, pwm ---- */
     const Motor::State &s = motor.get_state();
     bsp_uart0.uart_printf(
-        "%f,%f,%u\r\n",
-        s.target_speed_cm_s,
-        s.current_speed_cm_s,
-        s.current_pwm);
+      "%f,%f,%u\r\n",
+      s.target_speed_cm_s,
+      s.current_speed_cm_s,
+      s.current_pwm);
 
     tick++;
     vTaskDelay(pdMS_TO_TICKS(10));
@@ -165,11 +191,11 @@ int main()
   bsp_init();
   device_init();
 
-  TaskHandle_t h1, h4;
-  xTaskCreate(blink_task, "blink", 0x80, NULL, configMAX_PRIORITIES - 2, &h1);
-  xTaskCreate(motor_task, "motor", 0x200, NULL, configMAX_PRIORITIES - 1, &h4);
-  // xTaskCreate(pwm_task,   "pwm",   0x200, NULL, configMAX_PRIORITIES - 2, &h2);
-  // xTaskCreate(qei_task,   "qei",   0x200, NULL, configMAX_PRIORITIES - 2, &h3);
+  xTaskCreate(blink_task, "blink", 0x80,  NULL, configMAX_PRIORITIES - 2, NULL);
+  xTaskCreate(oled_task,  "oled",  0x200, NULL, configMAX_PRIORITIES - 1, NULL);
+  // xTaskCreate(pwm_task,   "pwm",   0x200, NULL, configMAX_PRIORITIES - 2, NULL);
+  // xTaskCreate(qei_task,   "qei",   0x200, NULL, configMAX_PRIORITIES - 2, NULL);
+  // xTaskCreate(motor_task, "motor",  0x200, NULL, configMAX_PRIORITIES - 1, NULL);
   // xTaskCreate(gyro_task,  "gyro",  0x200, NULL, configMAX_PRIORITIES - 1, NULL);
 
   vTaskStartScheduler();

@@ -58,6 +58,7 @@ SYSCONFIG_WEAK void SYSCFG_DL_init(void)
     SYSCFG_DL_QEI_0_init();
     SYSCFG_DL_TIMER_TICK_init();
     SYSCFG_DL_I2C0_init();
+    SYSCFG_DL_I2C1_init();
     SYSCFG_DL_UART0_init();
     SYSCFG_DL_UART1_init();
     SYSCFG_DL_DMA_init();
@@ -103,6 +104,7 @@ SYSCONFIG_WEAK void SYSCFG_DL_initPower(void)
     DL_TimerG_reset(QEI_0_INST);
     DL_TimerA_reset(TIMER_TICK_INST);
     DL_I2C_reset(I2C0_INST);
+    DL_I2C_reset(I2C1_INST);
     DL_UART_Main_reset(UART0_INST);
     DL_UART_Main_reset(UART1_INST);
 
@@ -113,6 +115,7 @@ SYSCONFIG_WEAK void SYSCFG_DL_initPower(void)
     DL_TimerG_enablePower(QEI_0_INST);
     DL_TimerA_enablePower(TIMER_TICK_INST);
     DL_I2C_enablePower(I2C0_INST);
+    DL_I2C_enablePower(I2C1_INST);
     DL_UART_Main_enablePower(UART0_INST);
     DL_UART_Main_enablePower(UART1_INST);
 
@@ -143,6 +146,16 @@ SYSCONFIG_WEAK void SYSCFG_DL_GPIO_init(void)
         DL_GPIO_WAKEUP_DISABLE);
     DL_GPIO_enableHiZ(GPIO_I2C0_IOMUX_SDA);
     DL_GPIO_enableHiZ(GPIO_I2C0_IOMUX_SCL);
+    DL_GPIO_initPeripheralInputFunctionFeatures(GPIO_I2C1_IOMUX_SDA,
+        GPIO_I2C1_IOMUX_SDA_FUNC, DL_GPIO_INVERSION_DISABLE,
+        DL_GPIO_RESISTOR_NONE, DL_GPIO_HYSTERESIS_DISABLE,
+        DL_GPIO_WAKEUP_DISABLE);
+    DL_GPIO_initPeripheralInputFunctionFeatures(GPIO_I2C1_IOMUX_SCL,
+        GPIO_I2C1_IOMUX_SCL_FUNC, DL_GPIO_INVERSION_DISABLE,
+        DL_GPIO_RESISTOR_NONE, DL_GPIO_HYSTERESIS_DISABLE,
+        DL_GPIO_WAKEUP_DISABLE);
+    DL_GPIO_enableHiZ(GPIO_I2C1_IOMUX_SDA);
+    DL_GPIO_enableHiZ(GPIO_I2C1_IOMUX_SCL);
 
     DL_GPIO_initPeripheralOutputFunction(
         GPIO_UART0_IOMUX_TX, GPIO_UART0_IOMUX_TX_FUNC);
@@ -424,15 +437,63 @@ SYSCONFIG_WEAK void SYSCFG_DL_I2C0_init(void) {
 
     /* Configure Controller Mode */
     DL_I2C_resetControllerTransfer(I2C0_INST);
-    /* Set frequency to 100000 Hz*/
-    DL_I2C_setTimerPeriod(I2C0_INST, 39);
+    /* Set frequency to 400000 Hz*/
+    DL_I2C_setTimerPeriod(I2C0_INST, 9);
     DL_I2C_setControllerTXFIFOThreshold(I2C0_INST, DL_I2C_TX_FIFO_LEVEL_EMPTY);
-    DL_I2C_setControllerRXFIFOThreshold(I2C0_INST, DL_I2C_RX_FIFO_LEVEL_BYTES_1);
+    DL_I2C_setControllerRXFIFOThreshold(I2C0_INST, DL_I2C_RX_FIFO_LEVEL_BYTES_2);
     DL_I2C_enableControllerClockStretching(I2C0_INST);
 
+    /* Configure Interrupts */
+    DL_I2C_enableInterrupt(I2C0_INST,
+                           DL_I2C_INTERRUPT_CONTROLLER_NACK |
+                           DL_I2C_INTERRUPT_CONTROLLER_RXFIFO_FULL |
+                           DL_I2C_INTERRUPT_CONTROLLER_RX_DONE |
+                           DL_I2C_INTERRUPT_CONTROLLER_START |
+                           DL_I2C_INTERRUPT_CONTROLLER_STOP |
+                           DL_I2C_INTERRUPT_CONTROLLER_TXFIFO_EMPTY |
+                           DL_I2C_INTERRUPT_CONTROLLER_TX_DONE);
+
+    NVIC_SetPriority(I2C0_INST_INT_IRQN, 3);
 
     /* Enable module */
     DL_I2C_enableController(I2C0_INST);
+
+
+}
+static const DL_I2C_ClockConfig gI2C1ClockConfig = {
+    .clockSel = DL_I2C_CLOCK_BUSCLK,
+    .divideRatio = DL_I2C_CLOCK_DIVIDE_1,
+};
+
+SYSCONFIG_WEAK void SYSCFG_DL_I2C1_init(void) {
+
+    DL_I2C_setClockConfig(I2C1_INST,
+        (DL_I2C_ClockConfig *) &gI2C1ClockConfig);
+    DL_I2C_setAnalogGlitchFilterPulseWidth(I2C1_INST,
+        DL_I2C_ANALOG_GLITCH_FILTER_WIDTH_50NS);
+    DL_I2C_enableAnalogGlitchFilter(I2C1_INST);
+
+    /* Configure Controller Mode */
+    DL_I2C_resetControllerTransfer(I2C1_INST);
+    /* Set frequency to 400000 Hz*/
+    DL_I2C_setTimerPeriod(I2C1_INST, 9);
+    DL_I2C_setControllerTXFIFOThreshold(I2C1_INST, DL_I2C_TX_FIFO_LEVEL_EMPTY);
+    DL_I2C_setControllerRXFIFOThreshold(I2C1_INST, DL_I2C_RX_FIFO_LEVEL_BYTES_8);
+    DL_I2C_enableControllerClockStretching(I2C1_INST);
+
+    /* Configure Interrupts */
+    DL_I2C_enableInterrupt(I2C1_INST,
+                           DL_I2C_INTERRUPT_CONTROLLER_NACK |
+                           DL_I2C_INTERRUPT_CONTROLLER_RXFIFO_FULL |
+                           DL_I2C_INTERRUPT_CONTROLLER_RX_DONE |
+                           DL_I2C_INTERRUPT_CONTROLLER_START |
+                           DL_I2C_INTERRUPT_CONTROLLER_STOP |
+                           DL_I2C_INTERRUPT_CONTROLLER_TXFIFO_EMPTY |
+                           DL_I2C_INTERRUPT_CONTROLLER_TX_DONE);
+
+
+    /* Enable module */
+    DL_I2C_enableController(I2C1_INST);
 
 
 }

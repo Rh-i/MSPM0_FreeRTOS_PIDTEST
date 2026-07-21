@@ -139,7 +139,7 @@ bool SYSCFG_DL_SYSCTL_SYSPLL_init(void);
 #define I2C0_INST                                                           I2C0
 #define I2C0_INST_IRQHandler                                     I2C0_IRQHandler
 #define I2C0_INST_INT_IRQN                                         I2C0_INT_IRQn
-#define I2C0_BUS_SPEED_HZ                                                 100000
+#define I2C0_BUS_SPEED_HZ                                                 400000
 #define GPIO_I2C0_SDA_PORT                                                 GPIOA
 #define GPIO_I2C0_SDA_PIN                                          DL_GPIO_PIN_0
 #define GPIO_I2C0_IOMUX_SDA                                       (IOMUX_PINCM1)
@@ -148,6 +148,20 @@ bool SYSCFG_DL_SYSCTL_SYSPLL_init(void);
 #define GPIO_I2C0_SCL_PIN                                          DL_GPIO_PIN_1
 #define GPIO_I2C0_IOMUX_SCL                                       (IOMUX_PINCM2)
 #define GPIO_I2C0_IOMUX_SCL_FUNC                        IOMUX_PINCM2_PF_I2C0_SCL
+
+/* Defines for I2C1 */
+#define I2C1_INST                                                           I2C1
+#define I2C1_INST_IRQHandler                                     I2C1_IRQHandler
+#define I2C1_INST_INT_IRQN                                         I2C1_INT_IRQn
+#define I2C1_BUS_SPEED_HZ                                                 400000
+#define GPIO_I2C1_SDA_PORT                                                 GPIOA
+#define GPIO_I2C1_SDA_PIN                                         DL_GPIO_PIN_16
+#define GPIO_I2C1_IOMUX_SDA                                      (IOMUX_PINCM38)
+#define GPIO_I2C1_IOMUX_SDA_FUNC                       IOMUX_PINCM38_PF_I2C1_SDA
+#define GPIO_I2C1_SCL_PORT                                                 GPIOA
+#define GPIO_I2C1_SCL_PIN                                         DL_GPIO_PIN_15
+#define GPIO_I2C1_IOMUX_SCL                                      (IOMUX_PINCM37)
+#define GPIO_I2C1_IOMUX_SCL_FUNC                       IOMUX_PINCM37_PF_I2C1_SCL
 
 
 /* Defines for UART0 */
@@ -230,6 +244,7 @@ void SYSCFG_DL_PWM_MOTOR_init(void);
 void SYSCFG_DL_QEI_0_init(void);
 void SYSCFG_DL_TIMER_TICK_init(void);
 void SYSCFG_DL_I2C0_init(void);
+void SYSCFG_DL_I2C1_init(void);
 void SYSCFG_DL_UART0_init(void);
 void SYSCFG_DL_UART1_init(void);
 void SYSCFG_DL_DMA_init(void);

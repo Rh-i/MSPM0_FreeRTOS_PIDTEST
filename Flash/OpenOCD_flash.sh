@@ -16,4 +16,5 @@ fi
 
 # 使用标准化路径烧录
 # 注意：确保 openocd 在 PATH 中，或者使用绝对路径
-openocd -f Flash/daplink.cfg -c "program \"${ELF_FILE}\" verify reset exit"
+# 添加 MSPM0 脚本搜索路径（/usr/local/share/openocd/scripts）
+openocd -s /usr/local/share/openocd/scripts -f Flash/daplink.cfg -c "program \"${ELF_FILE}\" verify reset exit"
