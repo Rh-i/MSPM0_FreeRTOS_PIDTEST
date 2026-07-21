@@ -11,6 +11,8 @@ BspUart<64> bsp_uart0;
 BspUart<64> bsp_uart1;
 BspPwm       bsp_pwm;
 BspQei       bsp_qei;
+BspI2c       bsp_i2c0;
+BspI2c       bsp_i2c1;
 
 /* ==================== BSP 初始化 ==================== */
 void bsp_init()
@@ -34,4 +36,8 @@ void bsp_init()
 
   /* QEI — TIMG8 */
   bsp_qei.init({QEI_0_INST});
+
+  /* I2C — OLED: I2C0, Track(PCA9555): I2C1 */
+  bsp_i2c0.init({I2C0_INST});
+  bsp_i2c1.init({I2C1_INST});
 }

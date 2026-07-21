@@ -9,6 +9,8 @@
 /* ==================== 全局实例 ==================== */
 TiGyro   ti_gyro;
 Motor    motor;
+IicOled  iic_oled;
+IicTrack iic_track;
 
 /* ==================== 设备初始化 ==================== */
 void device_init()
@@ -33,4 +35,10 @@ void device_init()
     0.2f,   /* kd */
     10000   /* pwm_max (period) */
   });
+
+  /* OLED — I2C0, 地址 0x3C */
+  iic_oled.init(&bsp_i2c0, 0x3C);
+
+  /* Track (PCA9555 巡线) — I2C1, 地址 0x20 */
+  iic_track.init(&bsp_i2c1, 0x20);
 }

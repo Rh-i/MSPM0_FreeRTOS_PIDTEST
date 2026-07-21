@@ -40,5 +40,6 @@
             "tooltip": "JLink 烧录 (Windows)"
         }
     ],
-    "cmake.useCMakePresets": "always"
+    "cmake.useCMakePresets": "always",
+    "cortex-debug.variableUseNaturalFormat": false
 }

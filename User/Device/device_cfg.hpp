@@ -8,6 +8,8 @@
 
 #include "ti_gyro.hpp"
 #include "motor.hpp"
+#include "iic_oled.hpp"
+#include "iic_track.hpp"
 
 
 /* ==================== 函数声明 ==================== */
@@ -16,6 +18,8 @@ void device_init();
 /* ==================== 全局声明 ==================== */
 extern TiGyro   ti_gyro;
 extern Motor    motor;
+extern IicOled  iic_oled;
+extern IicTrack iic_track;
 
 
 #endif // __DEVICE_CFG_HPP__

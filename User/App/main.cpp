@@ -8,29 +8,8 @@
 
 /* ========================================================================== */
 
-/**
- * @brief OLED 显示任务 — 屏幕显示自增计数器
- *
- * 屏幕布局 (16列 × 4行, 8×16字体):
- *   第1行: "OLED Counter"
- *   第2行: 自增数值
- */
-extern "C" void oled_task(void *arg)
-{
-  char    buf[17];
-  int32_t count = 0;
-
-  while (1)
-  {
-    snprintf(buf, sizeof(buf), "Cnt: %-10ld", (long)count);
-    oled.show_string(0, 0, "OLED Counter");
-    oled.show_string(0, 2, buf);
-    oled.refresh();
-
-    count++;
-    vTaskDelay(pdMS_TO_TICKS(200));
-  }
-}
+/** @brief 巡线数据全局变量（track_task 写入，oled_task 读取） */
+static volatile uint16_t g_track_data = 0;
 
 /** @brief 测试波形类型 */
 enum WaveType
@@ -185,14 +164,51 @@ extern "C" void blink_task(void *arg)
   }
 }
 
+extern "C" void track_task(void *arg)
+{
+  while (1)
+  {
+    g_track_data = iic_track.read();
+    vTaskDelay(pdMS_TO_TICKS(5));
+  }
+}
+
+extern "C" void oled_task(void *arg)
+{
+  char buf[17];
+
+  iic_oled.clear();
+
+  while (1)
+  {
+    uint16_t data = g_track_data;
+
+    /* 第 0 行: 原始值 (HEX) */
+    snprintf(buf, sizeof(buf), "T:%04X", data);
+    iic_oled.showString(0, 0, buf);
+
+    /* 第 2 行: 低 8 位 bit 图 */
+    for (uint8_t i = 0; i < 12; i++)
+    {
+      buf[i] = (data & (1 << i)) ? '1' : '0';
+    }
+    buf[12] = '\0';
+    iic_oled.showString(0, 2, buf);
+
+    iic_oled.refresh();
+    vTaskDelay(pdMS_TO_TICKS(100));
+  }
+}
+
 int main()
 {
   SYSCFG_DL_init();
   bsp_init();
   device_init();
 
-  xTaskCreate(blink_task, "blink", 0x80,  NULL, configMAX_PRIORITIES - 2, NULL);
-  xTaskCreate(oled_task,  "oled",  0x200, NULL, configMAX_PRIORITIES - 1, NULL);
+  xTaskCreate(blink_task, "blink", 0x80,  NULL, configMAX_PRIORITIES - 3, NULL);
+  xTaskCreate(track_task, "track", 0x100, NULL, configMAX_PRIORITIES - 1, NULL);
+  xTaskCreate(oled_task,  "oled",  0x200, NULL, configMAX_PRIORITIES - 2, NULL);
   // xTaskCreate(pwm_task,   "pwm",   0x200, NULL, configMAX_PRIORITIES - 2, NULL);
   // xTaskCreate(qei_task,   "qei",   0x200, NULL, configMAX_PRIORITIES - 2, NULL);
   // xTaskCreate(motor_task, "motor",  0x200, NULL, configMAX_PRIORITIES - 1, NULL);
