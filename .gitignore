@@ -46,7 +46,7 @@
 
 # --- 内核模块编译产物 ---
 *.mod*
-*.cmd
+.cmd
 .tmp_versions/
 modules.order
 Module.symvers
