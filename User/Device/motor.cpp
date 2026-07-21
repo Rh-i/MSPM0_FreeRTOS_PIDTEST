@@ -60,10 +60,12 @@ bool Motor::init(const Config &cfg)
 
   /*
    * PID 初始化
-   * 输出限幅 = pwm_max（PID 输出绝对值不超过 PWM 周期）
-   * 积分限幅 = pwm_max × 35%（防止积分饱和）
+   * 输出限幅 = pwm_max，积分限幅 = pwm_max（内置抗饱和）
+   * dt = control_period_ms / 1000（I/D 项自动时间缩放）
    */
-  _pid.init(cfg.kp, cfg.ki, cfg.kd, (float)cfg.pwm_max);
+  _pid.init(cfg.kp, cfg.ki, cfg.kd,
+            (float)cfg.pwm_max, (float)cfg.pwm_max,
+            cfg.control_period_ms / 1000.0f);
 
   /*
    * 预计算: 每厘米轮子位移对应的编码器脉冲数

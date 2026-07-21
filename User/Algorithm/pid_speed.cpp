@@ -8,6 +8,7 @@
  *              = delta_count × 0.487 cm/s
  *
  * @note 输出为 PWM 占空比 (0 ~ out_max)
+ * @note 积分限幅、采样周期、输入范围均在 init() 中一次性配置，无需额外调用。
  */
 
 #include "pid_speed.hpp"
@@ -22,22 +23,43 @@ PidSpeed::PidSpeed()
 /* ==================== 初始化 ==================== */
 
 /**
- * @brief 速度环PID初始化
- *
- * @param kp       比例系数
- * @param ki       积分系数
- * @param kd       微分系数
- * @param out_max  输出限幅（PWM 占空比最大值）
- *
- * @note 积分限幅自动设为 out_max 的 80%（防止深度饱和同时保留足够调节余量）
+ * @brief 8 参数全配置（最终实现）
  */
-void PidSpeed::init(float kp, float ki, float kd, float out_max)
+void PidSpeed::init(float kp, float ki, float kd,
+                    float out_max, float i_max,
+                    float dt,
+                    float input_min, float input_max)
 {
-  _pid.init(kp, ki, kd, out_max, out_max * 0.80f);
-
+  _pid.init(kp, ki, kd, out_max, i_max, dt, input_min, input_max);
 
   _speed_cm_s   = 0;
   _target_speed = 0;
+}
+
+/**
+ * @brief 4 参数兼容重载（i_max=out_max, dt=0, 无输入限幅）
+ */
+void PidSpeed::init(float kp, float ki, float kd, float out_max)
+{
+  init(kp, ki, kd, out_max, out_max, 0, 0, 0);
+}
+
+/**
+ * @brief 5 参数重载（自定义 i_max, dt=0, 无输入限幅）
+ */
+void PidSpeed::init(float kp, float ki, float kd, float out_max, float i_max)
+{
+  init(kp, ki, kd, out_max, i_max, 0, 0, 0);
+}
+
+/**
+ * @brief 6 参数重载（自定义 i_max + dt, 无输入限幅）
+ */
+void PidSpeed::init(float kp, float ki, float kd,
+                    float out_max, float i_max,
+                    float dt)
+{
+  init(kp, ki, kd, out_max, i_max, dt, 0, 0);
 }
 
 /* ==================== 计算 ==================== */

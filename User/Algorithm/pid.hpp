@@ -2,13 +2,21 @@
  * @file pid.hpp
  * @brief 位置式PID控制器 — 类声明
  *
- * @note 位置式 PID 算法:
- *   output = Kp×e(k) + Ki×Σe(k) + Kd×(e(k)-e(k-1))
- *   积分项带限幅，输出带限幅
+ * @note 位置式 PID 算法（带 dt 时间缩放）:
+ *   e(k)     = target - feedback
+ *   p_out    = Kp × e(k)
+ *   integral += Ki × e(k) × dt       （带抗饱和 + 限幅）
+ *   d_out    = Kd × (e(k)-e(k-1)) / dt
+ *   output   = p_out + integral + d_out  （带限幅）
+ *
+ * @note 抗饱和策略：输出饱和时，若误差方向与饱和方向一致，停止积分累加。
+ *       仅当误差能将输出拉回线性区时才继续积分（条件积分法）。
  */
 
 #ifndef __PID_HPP__
 #define __PID_HPP__
+
+#include <stdint.h>
 
 class Pid
 {
@@ -16,34 +24,52 @@ public:
   Pid();
 
   /**
-   * @brief PID 初始化
-   * @param kp       比例系数
-   * @param ki       积分系数
-   * @param kd       微分系数
-   * @param out_max  输出限幅（绝对值）
-   * @param i_max    积分限幅（绝对值）
+   * @brief PID 全参数初始化（推荐）
+   *
+   * @param kp         比例系数
+   * @param ki         积分系数
+   * @param kd         微分系数
+   * @param out_max    输出限幅（绝对值）
+   * @param i_max      积分限幅（绝对值）
+   * @param dt         采样周期 (s)，如 0.02=20ms；≤0 时回退 dt=1.0
+   * @param input_min  输入下限（min ≥ max 时关闭校验）
+   * @param input_max  输入上限
+   */
+  void  init(float kp, float ki, float kd,
+             float out_max, float i_max,
+             float dt,
+             float input_min, float input_max);
+
+  /**
+   * @brief PID 初始化（无 dt + 无输入限幅，向后兼容）
+   * @note 等效 init(kp,ki,kd,out_max,i_max, 0, 0,0)
    */
   void  init(float kp, float ki, float kd, float out_max, float i_max);
 
   /**
-   * @brief PID 计算（位置式）
-   * @param target   目标值
-   * @param feedback 反馈值
-   * @return PID 输出值（已限幅）
+   * @brief PID 初始化（带 dt，无输入限幅）
+   * @note 等效 init(kp,ki,kd,out_max,i_max, dt, 0,0)
    */
-  float calculate(float target, float feedback);
+  void  init(float kp, float ki, float kd,
+             float out_max, float i_max,
+             float dt);
 
-  /**
-   * @brief PID 重置
-   * @note 清零积分累计和微分历史，保留系数和限幅不变
-   */
+  float calculate(float target, float feedback);
   void  reset();
 
   /* ---- 访问器 ---- */
   float get_output() const { return _output; }
   float get_error()  const { return _error; }
+  float get_dt()     const { return _dt; }
 
 private:
+  /**
+   * @brief 输入合法性校验 + 钳位
+   * @param value 原始输入值
+   * @return 校验后的安全值
+   */
+  float clamp_input(float value) const;
+
   /* ---- PID 系数 ---- */
   float _kp; /* 比例系数 */
   float _ki; /* 积分系数 */
@@ -64,6 +90,14 @@ private:
 
   /* ---- 微分 ---- */
   float _last_error;  /* 上次误差 */
+
+  /* ---- 时间缩放 ---- */
+  float _dt;          /* 采样周期 (s)，0=未设置(等效1.0) */
+
+  /* ---- 输入范围 ---- */
+  float _input_min;   /* 输入下限 */
+  float _input_max;   /* 输入上限 */
+  bool  _input_limited; /* 是否启用输入限幅 */
 };
 
 #endif // __PID_HPP__

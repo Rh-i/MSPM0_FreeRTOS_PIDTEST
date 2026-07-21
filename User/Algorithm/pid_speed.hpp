@@ -14,7 +14,41 @@ class PidSpeed
 public:
   PidSpeed();
 
+  /**
+   * @brief 速度环PID全参数初始化
+   *
+   * @param kp         比例系数
+   * @param ki         积分系数
+   * @param kd         微分系数
+   * @param out_max    输出限幅（PWM 占空比最大值）
+   * @param i_max      积分限幅（绝对值），≤ out_max
+   * @param dt         采样周期 (s)，如 0.02=20ms；≤0 时回退 dt=1.0
+   * @param input_min  速度输入下限（min ≥ max 时关闭校验）
+   * @param input_max  速度输入上限
+   */
+  void  init(float kp, float ki, float kd,
+             float out_max, float i_max,
+             float dt,
+             float input_min, float input_max);
+
+  /**
+   * @brief 速度环PID初始化（积分限幅=out_max，无dt，无输入限幅）
+   * @note 等效 8 参数版 (kp,ki,kd,out_max, out_max, 0, 0,0)
+   */
   void  init(float kp, float ki, float kd, float out_max);
+
+  /**
+   * @brief 速度环PID初始化（自定义积分限幅，无dt，无输入限幅）
+   */
+  void  init(float kp, float ki, float kd, float out_max, float i_max);
+
+  /**
+   * @brief 速度环PID初始化（自定义积分限幅 + dt）
+   */
+  void  init(float kp, float ki, float kd,
+             float out_max, float i_max,
+             float dt);
+
   float calculate_speed(float target_speed, float current_speed_cm_s);
   void  reset();
 
